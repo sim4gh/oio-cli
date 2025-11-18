@@ -33,7 +33,7 @@ export async function deleteShort(shortId, options) {
       method: 'DELETE'
     })
 
-    if (response.statusCode === 200) {
+    if (response.statusCode === 204 || response.statusCode === 200) {
       spinner.succeed('Short deleted successfully')
       console.log(`\nShort ${shortId} has been deleted.`)
     } else if (response.statusCode === 404) {

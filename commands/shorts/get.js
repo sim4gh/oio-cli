@@ -20,7 +20,7 @@ export async function getShort(shortId) {
 
       console.log('\n' + '='.repeat(60))
       console.log(`Short ID: ${shortId}`)
-      console.log(`Created: ${createdAt ? new Date(createdAt * 1000).toISOString() : 'N/A'}`)
+      console.log(`Created: ${createdAt || 'N/A'}`)
       console.log(`Expires: ${expiresAt ? formatExpiry(expiresAt) : 'N/A'}`)
       console.log(`Expires At: ${expiresAt ? new Date(expiresAt * 1000).toISOString() : 'N/A'}`)
       console.log('='.repeat(60))

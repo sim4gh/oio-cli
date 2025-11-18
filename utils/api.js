@@ -40,7 +40,12 @@ export async function apiRequest(path, options = {}) {
 
   try {
     const response = await request(url, requestOptions)
-    const body = await response.body.json()
+
+    // Don't try to parse JSON for 204 No Content responses
+    let body = null
+    if (response.statusCode !== 204) {
+      body = await response.body.json()
+    }
 
     return {
       statusCode: response.statusCode,
