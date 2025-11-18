@@ -1,0 +1,24 @@
+{
+  "name": "oio",
+  "version": "1.0.0",
+  "description": "OIO CLI tool for authentication and management",
+  "main": "cli.js",
+  "type": "module",
+  "bin": {
+    "oio": "cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["oio", "cli", "auth"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^9.4.0",
+    "conf": "^10.2.0",
+    "enquirer": "^2.3.6",
+    "open": "^8.4.0",
+    "ora": "^6.1.2",
+    "undici": "^5.10.0"
+  }
+}
