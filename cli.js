@@ -10,6 +10,11 @@ import { listCommand } from './commands/notes/list.js'
 import { getCommand, downloadCommand } from './commands/notes/get.js'
 import { updateCommand } from './commands/notes/update.js'
 import { deleteCommand } from './commands/notes/delete.js'
+import { addShort } from './commands/shorts/add.js'
+import { clipShort } from './commands/shorts/clip.js'
+import { getShort } from './commands/shorts/get.js'
+import { listShorts } from './commands/shorts/list.js'
+import { deleteShort } from './commands/shorts/delete.js'
 
 program
   .name('oio')
@@ -95,5 +100,39 @@ program
   .option('--all', 'Download all attachments')
   .option('--output <dir>', 'Output directory for downloaded files')
   .action(downloadCommand)
+
+// Shorts commands
+const shorts = program.command('shorts')
+shorts.description('Manage ephemeral shorts (auto-delete after TTL)')
+
+shorts
+  .command('add [content]')
+  .description('Create a short from text, file, or stdin')
+  .option('--ttl <value>', 'Time to live (e.g., 30s, 60m, 24h)', '24h')
+  .action(addShort)
+
+shorts
+  .command('clip')
+  .description('Create a short from clipboard content')
+  .option('--ttl <value>', 'Time to live (e.g., 30s, 60m, 24h)', '24h')
+  .action(clipShort)
+
+shorts
+  .command('get <shortId>')
+  .description('Get and display a short')
+  .action(getShort)
+
+shorts
+  .command('ls')
+  .alias('list')
+  .description('List all your shorts')
+  .action(listShorts)
+
+shorts
+  .command('delete <shortId>')
+  .alias('rm')
+  .description('Delete a short')
+  .option('-f, --force', 'Skip confirmation')
+  .action(deleteShort)
 
 program.parse()

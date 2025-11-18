@@ -57,3 +57,34 @@ export function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
+
+/**
+ * Read a file with custom size validation
+ * @param {string} filePath - Path to the file
+ * @param {number} maxSizeBytes - Maximum allowed file size in bytes (optional)
+ * @returns {Promise<string>} File content
+ * @throws {Error} If file doesn't exist or is too large
+ */
+export async function readFileWithValidation(filePath, maxSizeBytes = null) {
+  // Check if file exists
+  if (!existsSync(filePath)) {
+    throw new Error(`File not found: ${filePath}`)
+  }
+
+  // Read file content
+  const content = await readFile(filePath, 'utf8')
+
+  // Validate size if maxSize is provided
+  if (maxSizeBytes !== null) {
+    const sizeBytes = Buffer.byteLength(content, 'utf8')
+    if (sizeBytes > maxSizeBytes) {
+      const sizeKB = (sizeBytes / 1024).toFixed(2)
+      const maxKB = (maxSizeBytes / 1024).toFixed(2)
+      throw new Error(
+        `File content exceeds maximum size of ${maxKB}KB (current: ${sizeKB}KB). Please reduce the file size.`
+      )
+    }
+  }
+
+  return content
+}
