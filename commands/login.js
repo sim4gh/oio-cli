@@ -1,6 +1,5 @@
 import { setTimeout } from 'node:timers/promises'
 import querystring from 'node:querystring'
-import enquirer from 'enquirer'
 import { request } from 'undici'
 import open from 'open'
 import ora from 'ora'
@@ -8,24 +7,11 @@ import { config } from '../config.js'
 
 export default async function login() {
   try {
-    // Prompt for base URL
-    const { baseurl } = await enquirer.prompt({
-      type: 'input',
-      name: 'baseurl',
-      message: 'Please enter the base URL of your OIO deployment',
-      validate: (input) => {
-        try {
-          new URL(input)
-          return true
-        } catch {
-          return 'Please enter a valid URL'
-        }
-      },
-      initial: config.get('baseurl') || 'https://oio.example.com'
-    })
+    // Use the configured base URL
+    const baseurl = 'https://auth.yumaverse.com'
 
     // Step 1: Request device authorization
-    const DEVICE_AUTH_URL = `${baseurl}/auth/device_authorization`
+    const DEVICE_AUTH_URL = `${baseurl}/device_authorization`
     const deviceAuthResp = await request(DEVICE_AUTH_URL, {
       method: 'POST',
       headers: {
@@ -59,7 +45,7 @@ export default async function login() {
     // Step 3: Poll the token endpoint
     let loggedIn = null
 
-    const TOKEN_URL = `${baseurl}/auth/token`
+    const TOKEN_URL = `${baseurl}/token`
     const tokenPayload = querystring.encode({
       grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
       device_code: deviceAuthRespBody.device_code
