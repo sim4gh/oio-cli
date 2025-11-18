@@ -11,16 +11,28 @@ export function formatNotesTable(notes) {
   }
 
   const table = new Table({
-    head: ['ID', 'Title', 'Created', 'Updated'],
-    colWidths: [38, 40, 22, 22],
+    head: ['ID', 'Title', 'Attachments', 'Created', 'Updated'],
+    colWidths: [12, 40, 30, 20, 20],
     wordWrap: true,
     wrapOnWordBoundary: true
   })
 
   notes.forEach(note => {
+    // Format attachments
+    let attachmentInfo = '-'
+    if (note.attachments && note.attachments.length > 0) {
+      const count = note.attachments.length
+      const names = note.attachments
+        .slice(0, 2)
+        .map(a => a.fileName)
+        .join(', ')
+      attachmentInfo = count > 2 ? `${count} files (${names}, ...)` : `${count} file(s): ${names}`
+    }
+
     table.push([
       note.noteId,
       note.title,
+      attachmentInfo,
       formatDate(note.createdAt),
       formatDate(note.updatedAt)
     ])

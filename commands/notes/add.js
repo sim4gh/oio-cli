@@ -1,6 +1,7 @@
 import { apiRequest, handleApiError } from '../../utils/api.js'
 import { readNoteFile, validateNoteSize } from '../../utils/file.js'
 import { editInEditor, getEditorName } from '../../utils/editor.js'
+import { parseAttachmentPaths, uploadFiles } from '../../utils/file-upload.js'
 import ora from 'ora'
 
 /**
@@ -54,6 +55,28 @@ export async function addCommand(title, options) {
       console.log(`\nNote ID: ${response.body.noteId}`)
       console.log(`Title: ${response.body.title}`)
       console.log(`Created: ${response.body.createdAt}`)
+
+      // Handle attachments if --attach option is provided
+      if (options.attach) {
+        const noteId = response.body.noteId
+        const filePaths = parseAttachmentPaths(options.attach)
+
+        if (filePaths.length > 0) {
+          console.log(`\nUploading ${filePaths.length} attachment(s)...`)
+          const uploadResults = await uploadFiles(noteId, filePaths)
+
+          // Show summary
+          const successful = uploadResults.filter(r => r.success).length
+          const failed = uploadResults.filter(r => !r.success).length
+
+          console.log(`\nAttachment upload summary: ${successful} succeeded, ${failed} failed`)
+
+          // Show errors for failed uploads
+          uploadResults
+            .filter(r => !r.success)
+            .forEach(r => console.error(`  - ${r.fileName}: ${r.error}`))
+        }
+      }
     } else if (response.statusCode === 413) {
       spinner.fail('Note too large')
       console.error(`Error: ${response.body.message}`)

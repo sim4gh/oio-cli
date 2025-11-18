@@ -7,7 +7,7 @@ import whoami from './commands/whoami.js'
 import { healthCommand } from './commands/health.js'
 import { addCommand } from './commands/notes/add.js'
 import { listCommand } from './commands/notes/list.js'
-import { getCommand } from './commands/notes/get.js'
+import { getCommand, downloadCommand } from './commands/notes/get.js'
 import { updateCommand } from './commands/notes/update.js'
 import { deleteCommand } from './commands/notes/delete.js'
 
@@ -58,6 +58,7 @@ program
   .command('add <title>')
   .description('Create a new note')
   .option('--body <filepath>', 'Path to markdown file')
+  .option('--attach <files>', 'Comma-separated list of files to attach')
   .action(addCommand)
 
 // Get note command (at root level)
@@ -71,6 +72,7 @@ program
   .command('upd <id>')
   .description('Update a note by ID')
   .option('--body <filepath>', 'Path to markdown file')
+  .option('--attach <files>', 'Comma-separated list of files to attach')
   .action(updateCommand)
 
 // Delete note command (at root level)
@@ -78,5 +80,20 @@ program
   .command('delete <id>')
   .description('Delete a note by ID')
   .action(deleteCommand)
+
+// List notes command (at root level - alias for 'notes ls')
+program
+  .command('ls')
+  .description('List all notes')
+  .option('--page <number>', 'Page number', '1')
+  .action(listCommand)
+
+// Download attachments command (at root level)
+program
+  .command('download <id>')
+  .description('Download attachments from a note')
+  .option('--all', 'Download all attachments')
+  .option('--output <dir>', 'Output directory for downloaded files')
+  .action(downloadCommand)
 
 program.parse()
