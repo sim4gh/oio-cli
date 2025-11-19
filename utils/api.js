@@ -1,5 +1,6 @@
 import { request } from 'undici'
 import { config } from '../config.js'
+import { isTokenExpired, refreshTokens } from './refresh-token.js'
 
 /**
  * Make an authenticated API request
@@ -13,9 +14,19 @@ export async function apiRequest(path, options = {}) {
     throw new Error('Not configured. Please run "oio auth login" first.')
   }
 
-  const idToken = config.get('id_token')
+  let idToken = config.get('id_token')
   if (!idToken && options.requireAuth !== false) {
     throw new Error('Not authenticated. Please run "oio auth login" first.')
+  }
+
+  // Check if ID token is expired and refresh if needed
+  if (idToken && options.requireAuth !== false && isTokenExpired(idToken)) {
+    try {
+      const tokens = await refreshTokens()
+      idToken = tokens.id_token
+    } catch (error) {
+      throw new Error(`Authentication expired: ${error.message}`)
+    }
   }
 
   const url = `${baseUrl}${path}`
