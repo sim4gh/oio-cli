@@ -1,6 +1,6 @@
 {
   "name": "oio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "OIO CLI tool for authentication, notes management, and ephemeral shorts",
   "main": "cli.js",
   "type": "module",
