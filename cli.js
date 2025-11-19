@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import { program } from 'commander'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 import login from './commands/login.js'
 import logout from './commands/logout.js'
 import whoami from './commands/whoami.js'
@@ -16,10 +19,14 @@ import { getShort } from './commands/shorts/get.js'
 import { listShorts } from './commands/shorts/list.js'
 import { deleteShort } from './commands/shorts/delete.js'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const packageJson = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'))
+
 program
   .name('oio')
   .description('OIO CLI tool for authentication and management')
-  .version('1.0.0')
+  .version(packageJson.version)
 
 // Auth commands
 const auth = program
