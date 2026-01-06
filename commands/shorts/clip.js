@@ -3,6 +3,24 @@ import { validateShortSize } from '../../utils/shorts-validator.js'
 import { parseTTL } from '../../utils/ttl.js'
 import clipboardy from 'clipboardy'
 import ora from 'ora'
+import { exec } from 'child_process'
+import { promisify } from 'util'
+
+const execAsync = promisify(exec)
+
+/**
+ * Check if clipboard contains image data (macOS only)
+ */
+async function clipboardHasImage() {
+  if (process.platform !== 'darwin') return false
+  try {
+    const { stdout } = await execAsync("osascript -e 'clipboard info'")
+    const imageTypes = ['PNGf', 'JPEG', 'TIFF', 'GIF', 'jp2 ', 'BMP', 'AVIF']
+    return imageTypes.some(type => stdout.includes(type))
+  } catch {
+    return false
+  }
+}
 
 /**
  * Clip short command
@@ -17,16 +35,22 @@ export async function clipShort(options) {
 
     try {
       shortContent = await clipboardy.read()
+
+      // Check if clipboard is empty
+      if (!shortContent || shortContent.trim().length === 0) {
+        if (await clipboardHasImage()) {
+          spinner.fail('Clipboard contains an image, not text')
+          console.error('Hint: Copy text content to use this command')
+        } else {
+          spinner.fail('Clipboard is empty')
+        }
+        process.exit(1)
+      }
+
       spinner.succeed('Clipboard content read successfully')
     } catch (error) {
       spinner.fail('Failed to read clipboard')
       console.error('Error: Could not access clipboard. Make sure you have copied something to clipboard.')
-      process.exit(1)
-    }
-
-    // Check if clipboard is empty
-    if (!shortContent || shortContent.trim().length === 0) {
-      console.error('Error: Clipboard is empty')
       process.exit(1)
     }
 

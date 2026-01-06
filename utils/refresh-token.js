@@ -59,10 +59,9 @@ export async function refreshTokens() {
     throw new Error('No refresh token available. Please run "oio auth login" again.')
   }
 
-  // Check if refresh token is expired
-  if (isTokenExpired(refreshToken)) {
-    throw new Error('Refresh token has expired. Please run "oio auth login" again.')
-  }
+  // Note: Cognito refresh tokens are opaque (not JWTs), so we cannot check
+  // expiration client-side. We attempt the refresh and handle errors from Cognito.
+  // Refresh tokens are configured to last 365 days in the Cognito User Pool.
 
   const params = new URLSearchParams({
     grant_type: 'refresh_token',

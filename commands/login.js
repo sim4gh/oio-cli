@@ -88,6 +88,7 @@ export default async function login() {
     config.set('id_token', loggedIn.id_token)
     config.set('access_token', loggedIn.access_token)
     config.set('refresh_token', loggedIn.refresh_token)
+    config.set('logged_in_at', new Date().toISOString())
 
     console.log('\nAuthentication complete! You are now logged in.')
   } catch (error) {

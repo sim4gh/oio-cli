@@ -1,4 +1,3 @@
-import { request } from 'undici'
 import { config } from '../config.js'
 
 export default async function whoami() {
@@ -31,23 +30,35 @@ export default async function whoami() {
           if (payload.name) console.log(`  Name: ${payload.name}`)
           if (payload.preferred_username) console.log(`  Username: ${payload.preferred_username}`)
 
-          // Check token expiration
-          if (payload.exp) {
-            const expirationDate = new Date(payload.exp * 1000)
-            const now = new Date()
-            const isExpired = expirationDate < now
-
-            console.log(`\nToken Expiration: ${expirationDate.toLocaleString()}`)
-            if (isExpired) {
-              console.log('  Status: EXPIRED (you may need to login again)')
-            } else {
-              console.log('  Status: Valid')
-            }
-          }
         }
       } catch (parseError) {
         console.log('\nCould not parse token information')
       }
+    }
+
+    // Show session expiration based on refresh token validity (365 days from login)
+    const loggedInAt = config.get('logged_in_at')
+    if (loggedInAt) {
+      const loginDate = new Date(loggedInAt)
+      const sessionExpiry = new Date(loginDate)
+      sessionExpiry.setDate(sessionExpiry.getDate() + 365)
+
+      const now = new Date()
+      const daysRemaining = Math.ceil((sessionExpiry - now) / (1000 * 60 * 60 * 24))
+
+      console.log('\nSession Information:')
+      console.log(`  Logged in: ${loginDate.toLocaleString()}`)
+      console.log(`  Session expires: ${sessionExpiry.toLocaleString()}`)
+      if (daysRemaining > 0) {
+        console.log(`  Status: Valid (${daysRemaining} days remaining)`)
+      } else {
+        console.log('  Status: EXPIRED (please login again)')
+      }
+    } else {
+      // Fallback for users who logged in before this update
+      console.log('\nSession Information:')
+      console.log('  Session expires: ~1 year from login')
+      console.log('  (Re-login to see exact expiration date)')
     }
 
     // Optionally: Try to call a userinfo endpoint if available
