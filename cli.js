@@ -15,6 +15,7 @@ import { updateCommand } from './commands/notes/update.js'
 import { deleteCommand } from './commands/notes/delete.js'
 import { addShort } from './commands/shorts/add.js'
 import { clipShort } from './commands/shorts/clip.js'
+import { fileShort } from './commands/shorts/file.js'
 import { getShort } from './commands/shorts/get.js'
 import { listShorts } from './commands/shorts/list.js'
 import { deleteShort } from './commands/shorts/delete.js'
@@ -139,6 +140,13 @@ shorts
   .description('Create a short from clipboard content')
   .option('--ttl <value>', 'Time to live (e.g., 30s, 60m, 24h)', '24h')
   .action(clipShort)
+
+shorts
+  .command('file <path>')
+  .alias('f')
+  .description('Upload a file as an ephemeral short (max 150MB, 7 day TTL)')
+  .option('--ttl <value>', 'Time to live (e.g., 1h, 24h, 168h)', '24h')
+  .action(fileShort)
 
 shorts
   .command('get <shortId>')
