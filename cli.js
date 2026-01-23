@@ -23,6 +23,13 @@ import { captureScreenshot, clipboardScreenshot } from './commands/screenshots/c
 import { listScreenshots } from './commands/screenshots/list.js'
 import { getScreenshot } from './commands/screenshots/get.js'
 import { deleteScreenshot } from './commands/screenshots/delete.js'
+import { addFile } from './commands/files/add.js'
+import { listFiles } from './commands/files/list.js'
+import { getFile } from './commands/files/get.js'
+import { deleteFile } from './commands/files/delete.js'
+import { shareFile } from './commands/files/share.js'
+import { unshareFile } from './commands/files/unshare.js'
+import { listShares } from './commands/files/shares.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -204,5 +211,60 @@ sc
   .description('Delete a screenshot')
   .option('-f, --force', 'Skip confirmation')
   .action(deleteScreenshot)
+
+// Files commands (Pro subscription required)
+const files = program.command('files').alias('f')
+files.description('Persistent file storage with sharing (Pro subscription required)')
+
+files
+  .command('add <filepath>')
+  .alias('a')
+  .description('Upload a file (max 1GB)')
+  .option('-d, --description <text>', 'Optional description for the file')
+  .action(addFile)
+
+files
+  .command('ls')
+  .aliases(['l', 'list'])
+  .description('List all your files')
+  .option('--limit <number>', 'Maximum number of files to return', '50')
+  .option('--next-token <token>', 'Pagination token')
+  .action(listFiles)
+
+files
+  .command('get <fileId>')
+  .alias('g')
+  .description('Download a file')
+  .option('-o, --output <path>', 'Output file path')
+  .option('-i, --info', 'Show file info and download URL only')
+  .action(getFile)
+
+files
+  .command('delete <fileId>')
+  .aliases(['d', 'rm'])
+  .description('Delete a file and all its shares')
+  .option('-f, --force', 'Skip confirmation')
+  .action(deleteFile)
+
+files
+  .command('share <fileId>')
+  .alias('sh')
+  .description('Create a share link for a file')
+  .option('--public', 'Create a public share (no password)')
+  .option('--password <password>', 'Create a password-protected share')
+  .option('--mar', 'Use miguelaramis.com domain for share URL')
+  .option('--expires <days>', 'Share expiration in days (default: 30)')
+  .action(shareFile)
+
+files
+  .command('unshare <fileId> <shareId>')
+  .description('Revoke a share link')
+  .option('-f, --force', 'Skip confirmation')
+  .action(unshareFile)
+
+files
+  .command('shares <fileId>')
+  .description('List all shares for a file')
+  .action(listShares)
 
 program.parse()
