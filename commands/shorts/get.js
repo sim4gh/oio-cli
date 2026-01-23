@@ -2,6 +2,10 @@ import { apiRequest, handleApiError } from '../../utils/api.js'
 import { formatExpiry } from '../../utils/ttl.js'
 import ora from 'ora'
 import clipboard from 'clipboardy'
+import { request } from 'undici'
+import { createWriteStream } from 'fs'
+import { pipeline } from 'stream/promises'
+import { join } from 'path'
 
 /**
  * Format bytes to human-readable string
@@ -32,7 +36,7 @@ export async function getShort(shortId) {
     if (response.statusCode === 200) {
       spinner.succeed('Short fetched successfully')
 
-      const { type, content, createdAt, expiresAt, filename, fileSize, contentType, downloadUrl, downloadUrlExpiresIn } = response.body
+      const { type, content, createdAt, expiresAt, filename, fileSize, contentType, downloadUrl } = response.body
 
       console.log('\n' + '='.repeat(60))
       console.log(`Short ID: ${shortId}`)
@@ -49,16 +53,28 @@ export async function getShort(shortId) {
         console.log(`Size: ${formatBytes(fileSize)}`)
         console.log(`Content-Type: ${contentType}`)
         console.log()
-        console.log('Download URL (valid for 1 hour):')
-        console.log(downloadUrl)
-        console.log()
 
-        // Copy download URL to clipboard
+        // Download the file
+        const downloadSpinner = ora(`Downloading ${filename}...`).start()
         try {
-          await clipboard.write(downloadUrl)
-          console.log('(Download URL copied to clipboard)')
-        } catch {
-          // Clipboard may not be available in all environments
+          const outputPath = join(process.cwd(), filename)
+          const { body } = await request(downloadUrl)
+          const fileStream = createWriteStream(outputPath)
+          await pipeline(body, fileStream)
+          downloadSpinner.succeed(`Downloaded: ${outputPath}`)
+        } catch (downloadError) {
+          downloadSpinner.fail('Download failed')
+          console.error(`Error: ${downloadError.message}`)
+          console.log()
+          console.log('Download URL (valid for 1 hour):')
+          console.log(downloadUrl)
+          // Copy download URL to clipboard as fallback
+          try {
+            await clipboard.write(downloadUrl)
+            console.log('(Download URL copied to clipboard)')
+          } catch {
+            // Clipboard may not be available
+          }
         }
       } else {
         // Display text content
