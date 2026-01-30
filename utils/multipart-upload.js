@@ -4,10 +4,13 @@
  */
 
 import { request } from 'undici'
+import { Readable } from 'stream'
 
-const MAX_CONCURRENT_UPLOADS = 5
-const MAX_RETRIES = 3
+const MAX_CONCURRENT_UPLOADS = 3 // Reduced from 5 to avoid overwhelming connections
+const MAX_RETRIES = 5 // Increased from 3 for better reliability
 const RETRY_DELAY_MS = 1000
+const BODY_TIMEOUT_MS = 120000 // 2 minutes for body upload
+const HEADERS_TIMEOUT_MS = 30000 // 30 seconds for headers
 
 /**
  * Upload a single part to S3 using presigned URL
@@ -21,12 +24,17 @@ async function uploadPart (presignedUrl, data, partNumber) {
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      // Use Readable stream to avoid EPIPE issues with large buffers
+      const bodyStream = Readable.from(data)
+
       const response = await request(presignedUrl, {
         method: 'PUT',
-        body: data,
+        body: bodyStream,
         headers: {
           'content-length': data.length
-        }
+        },
+        bodyTimeout: BODY_TIMEOUT_MS,
+        headersTimeout: HEADERS_TIMEOUT_MS
       })
 
       if (response.statusCode !== 200) {
@@ -43,8 +51,14 @@ async function uploadPart (presignedUrl, data, partNumber) {
       return etag
     } catch (error) {
       lastError = error
+
+      // EPIPE errors need longer delays as they often indicate connection issues
+      const isEpipe = error.code === 'EPIPE' || error.message?.includes('EPIPE')
+      const baseDelay = isEpipe ? RETRY_DELAY_MS * 3 : RETRY_DELAY_MS
+
       if (attempt < MAX_RETRIES - 1) {
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * (attempt + 1)))
+        const delay = baseDelay * (attempt + 1)
+        await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
   }
@@ -82,12 +96,18 @@ export async function uploadParts (presignedUrls, fileBuffer, partSize, onProgre
 
   // Process uploads in batches to limit concurrency
   const results = []
+  const STAGGER_DELAY_MS = 100 // Small delay between starting concurrent uploads
 
   for (let i = 0; i < uploadTasks.length; i += MAX_CONCURRENT_UPLOADS) {
     const batch = uploadTasks.slice(i, i + MAX_CONCURRENT_UPLOADS)
 
     const batchResults = await Promise.all(
-      batch.map(async task => {
+      batch.map(async (task, index) => {
+        // Stagger start times to avoid overwhelming connection pool
+        if (index > 0) {
+          await new Promise(resolve => setTimeout(resolve, STAGGER_DELAY_MS * index))
+        }
+
         const etag = await uploadPart(task.url, task.data, task.partNumber)
 
         completedBytes += task.size
