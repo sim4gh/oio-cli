@@ -77,10 +77,11 @@ export async function listFiles (options) {
       return
     }
 
-    // Check if any files have descriptions
+    // Check if any files have descriptions or are temporary
     const hasDescriptions = files.some(f => f.description)
+    const hasTemporary = files.some(f => f.temporary)
 
-    // Create table with or without description column
+    // Create table with appropriate columns
     const tableConfig = hasDescriptions
       ? {
           head: ['ID', 'Filename', 'Size', 'Description', 'Created'],
@@ -96,10 +97,13 @@ export async function listFiles (options) {
     const table = new Table(tableConfig)
 
     for (const file of files) {
+      // Add [TMP] indicator for temporary files
+      const tmpIndicator = file.temporary ? ' [TMP]' : ''
+
       if (hasDescriptions) {
         const desc = file.description || '-'
         table.push([
-          file.fileId,
+          file.fileId + tmpIndicator,
           file.filename.length > 30 ? file.filename.substring(0, 27) + '...' : file.filename,
           formatBytes(file.size),
           desc.length > 28 ? desc.substring(0, 25) + '...' : desc,
@@ -107,13 +111,18 @@ export async function listFiles (options) {
         ])
       } else {
         table.push([
-          file.fileId,
+          file.fileId + tmpIndicator,
           file.filename.length > 38 ? file.filename.substring(0, 35) + '...' : file.filename,
           formatBytes(file.size),
           file.contentType.length > 23 ? file.contentType.substring(0, 20) + '...' : file.contentType,
           formatDate(file.createdAt)
         ])
       }
+    }
+
+    // Show legend if there are temporary files
+    if (hasTemporary) {
+      console.log('[TMP] = Temporary file (auto-deletes after 24 hours)\n')
     }
 
     console.log(table.toString())

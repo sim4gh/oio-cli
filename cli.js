@@ -219,8 +219,9 @@ files.description('Persistent file storage with sharing (Pro subscription requir
 files
   .command('add <filepath>')
   .alias('a')
-  .description('Upload a file (max 1GB)')
+  .description('Upload a file (max 1GB, or 10GB with --tmp)')
   .option('-d, --description <text>', 'Optional description for the file')
+  .option('-t, --tmp', 'Temporary file (auto-deletes in 24 hours, max 10GB)')
   .action(addFile)
 
 files

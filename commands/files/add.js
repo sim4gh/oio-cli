@@ -1,5 +1,5 @@
 import { apiRequest, handleApiError } from '../../utils/api.js'
-import { uploadParts, formatBytes, createProgressBar } from '../../utils/multipart-upload.js'
+import { uploadParts, uploadPartsFromFile, formatBytes, createProgressBar } from '../../utils/multipart-upload.js'
 import { readFile, stat } from 'fs/promises'
 import { existsSync } from 'fs'
 import { basename } from 'path'
@@ -8,6 +8,7 @@ import clipboard from 'clipboardy'
 import { lookup } from 'mime-types'
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024 * 1024 // 1GB
+const MAX_TEMP_FILE_SIZE_BYTES = 10 * 1024 * 1024 * 1024 // 10GB for temporary files
 const PART_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
 
 /**
@@ -18,6 +19,9 @@ const PART_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
  */
 export async function addFile (filePath, options) {
   const description = options?.description
+  const isTemporary = options?.tmp || false
+  const maxSize = isTemporary ? MAX_TEMP_FILE_SIZE_BYTES : MAX_FILE_SIZE_BYTES
+  const maxSizeLabel = isTemporary ? '10GB' : '1GB'
   try {
     // Validate file exists
     if (!filePath) {
@@ -40,8 +44,8 @@ export async function addFile (filePath, options) {
     }
 
     // Validate file size
-    if (fileSize > MAX_FILE_SIZE_BYTES) {
-      console.error(`Error: File too large. Maximum size is 1GB, file is ${formatBytes(fileSize)}`)
+    if (fileSize > maxSize) {
+      console.error(`Error: File too large. Maximum size is ${maxSizeLabel}, file is ${formatBytes(fileSize)}`)
       process.exit(1)
     }
 
@@ -54,22 +58,15 @@ export async function addFile (filePath, options) {
     console.log(`File: ${filename}`)
     console.log(`Size: ${formatBytes(fileSize)}`)
     console.log(`Type: ${contentType}`)
+    if (isTemporary) {
+      console.log(`Mode: Temporary (auto-deletes in 24 hours)`)
+    }
     console.log()
 
-    // Read file into buffer
-    const spinner = ora('Reading file...').start()
-    let fileBuffer
-    try {
-      fileBuffer = await readFile(filePath)
-      spinner.succeed('File read successfully')
-    } catch (error) {
-      spinner.fail('Failed to read file')
-      console.error(`Error: ${error.message}`)
-      process.exit(1)
-    }
+    // For files > 2GB, we'll stream directly from disk instead of loading into memory
+    const useStreaming = fileSize > 2 * 1024 * 1024 * 1024 // 2GB threshold
 
-    // Initialize multipart upload
-    spinner.start('Initializing upload...')
+    const spinner = ora('Initializing upload...').start()
     const initBody = {
       filename,
       contentType,
@@ -78,6 +75,10 @@ export async function addFile (filePath, options) {
 
     if (description) {
       initBody.description = description
+    }
+
+    if (isTemporary) {
+      initBody.temporary = true
     }
 
     const initResponse = await apiRequest('/files/init', {
@@ -107,15 +108,34 @@ export async function addFile (filePath, options) {
 
     let completedParts
     try {
-      completedParts = await uploadParts(
-        presignedUrls,
-        fileBuffer,
-        partSize || PART_SIZE_BYTES,
-        (completed, total, completedBytes, totalBytes) => {
-          const progress = createProgressBar(completedBytes, totalBytes)
-          spinner.text = `Uploading ${completed}/${total} parts... ${progress} ${formatBytes(completedBytes)}/${formatBytes(totalBytes)}`
-        }
-      )
+      if (useStreaming) {
+        // Stream directly from file for large files (> 2GB)
+        completedParts = await uploadPartsFromFile(
+          presignedUrls,
+          filePath,
+          fileSize,
+          partSize || PART_SIZE_BYTES,
+          (completed, total, completedBytes, totalBytes) => {
+            const progress = createProgressBar(completedBytes, totalBytes)
+            spinner.text = `Uploading ${completed}/${total} parts... ${progress} ${formatBytes(completedBytes)}/${formatBytes(totalBytes)}`
+          }
+        )
+      } else {
+        // Read file into buffer for smaller files
+        spinner.text = 'Reading file...'
+        const fileBuffer = await readFile(filePath)
+        spinner.text = `Uploading 0/${totalParts} parts...`
+
+        completedParts = await uploadParts(
+          presignedUrls,
+          fileBuffer,
+          partSize || PART_SIZE_BYTES,
+          (completed, total, completedBytes, totalBytes) => {
+            const progress = createProgressBar(completedBytes, totalBytes)
+            spinner.text = `Uploading ${completed}/${total} parts... ${progress} ${formatBytes(completedBytes)}/${formatBytes(totalBytes)}`
+          }
+        )
+      }
       spinner.succeed(`Uploaded ${totalParts} parts`)
     } catch (error) {
       spinner.fail('Upload failed')
@@ -146,6 +166,10 @@ export async function addFile (filePath, options) {
     console.log(`Size: ${formatBytes(completeResponse.body.size)}`)
     if (description) {
       console.log(`Description: ${description}`)
+    }
+    if (completeResponse.body.expiresAt) {
+      const expiresDate = new Date(completeResponse.body.expiresAt * 1000)
+      console.log(`Expires: ${expiresDate.toLocaleString()}`)
     }
 
     // Copy file ID to clipboard
